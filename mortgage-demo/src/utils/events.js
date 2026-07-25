@@ -1,0 +1,59 @@
+// Canonical event types fired across the site, and their mapping to the
+// Adobe Experience Platform / AJO event vocabulary described in the
+// project spec. These are the values used both for the internal
+// `customerEvents` local storage log and for the simulated Alloy Web SDK
+// payloads in services/alloyService.js.
+
+export const EVENT_TYPES = {
+  PAGE_VIEW: 'pageView',
+  LOGIN: 'login',
+  LOGOUT: 'logout',
+  REGISTRATION: 'registration',
+  CATEGORY_VIEWED: 'categoryViewed',
+  ELIGIBILITY_CHECK: 'eligibilityCheck',
+  APPLICATION_OPENED: 'applicationOpened',
+  APPLICATION_SUBMITTED: 'applicationSubmitted',
+  APPLICATION_ABANDONED: 'applicationAbandoned',
+  APPLICATION_FORM_ABANDONED: 'applicationFormAbandoned',
+  PROFILE_UPDATED: 'profileUpdated',
+  CONSENT_UPDATED: 'consentUpdated',
+  DOCUMENT_UPLOADED: 'documentUploaded',
+  APPLICATION_STATUS_CHANGED: 'applicationStatusChanged',
+};
+
+export const AEP_EVENT_MAP = {
+  [EVENT_TYPES.REGISTRATION]: 'user.registration',
+  [EVENT_TYPES.LOGIN]: 'user.login',
+  [EVENT_TYPES.LOGOUT]: 'user.logout',
+  [EVENT_TYPES.PAGE_VIEW]: 'web.webpagedetails.pageViews',
+  [EVENT_TYPES.CATEGORY_VIEWED]: 'mortgage.categoryView',
+  [EVENT_TYPES.ELIGIBILITY_CHECK]: 'mortgage.eligibilityCheck',
+  [EVENT_TYPES.APPLICATION_OPENED]: 'mortgage.applicationStarted',
+  [EVENT_TYPES.APPLICATION_SUBMITTED]: 'mortgage.applicationSubmitted',
+  [EVENT_TYPES.APPLICATION_ABANDONED]: 'mortgage.applicationAbandoned',
+  [EVENT_TYPES.APPLICATION_FORM_ABANDONED]: 'mortgage.applicationFormAbandoned',
+  [EVENT_TYPES.PROFILE_UPDATED]: 'user.profileUpdated',
+  [EVENT_TYPES.CONSENT_UPDATED]: 'user.consentUpdated',
+  [EVENT_TYPES.DOCUMENT_UPLOADED]: 'mortgage.documentUploaded',
+  [EVENT_TYPES.APPLICATION_STATUS_CHANGED]: 'mortgage.applicationStatusChanged',
+};
+
+// Human-readable page names for pageView events, keyed by route path.
+// Falls back to the raw path if a route isn't listed here.
+export const PAGE_NAMES = {
+  '/': 'Home',
+  '/login': 'Login',
+  '/register': 'Register',
+  '/forgot-password': 'Forgot Password',
+  '/loans/home': 'Home Loan',
+  '/loans/land': 'Land Loan',
+  '/loans/vehicle': 'Vehicle Loan',
+  '/loans/commercial': 'Commercial Loan',
+  '/applications': 'My Applications',
+  '/profile': 'Profile',
+  '/admin': 'Admin Panel',
+};
+
+export function nowIso() {
+  return new Date().toISOString();
+}
