@@ -79,3 +79,27 @@ export function getSessionEventLog() {
 export function clearSessionEventLog() {
   writeSessionJson(KEYS.SESSION_EVENTS, []);
 }
+
+export function saveEligibilityProgress(category, values) {
+  const progress = readSessionJson(KEYS.ELIGIBILITY_PROGRESS, {});
+  progress[category] = {
+    ...(progress[category] || {}),
+    ...values,
+    lastUpdated: nowIso(),
+  };
+  writeSessionJson(KEYS.ELIGIBILITY_PROGRESS, progress);
+  return progress[category];
+}
+
+export function getEligibilityProgress(category) {
+  const progress = readSessionJson(KEYS.ELIGIBILITY_PROGRESS, {});
+  return progress[category] || null;
+}
+
+export function clearEligibilityProgress(category) {
+  const progress = readSessionJson(KEYS.ELIGIBILITY_PROGRESS, {});
+  if (!progress[category]) return null;
+  delete progress[category];
+  writeSessionJson(KEYS.ELIGIBILITY_PROGRESS, progress);
+  return progress;
+}

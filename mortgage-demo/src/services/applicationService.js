@@ -1,4 +1,4 @@
-import { KEYS, readJson, writeJson } from './localStorage';
+import { KEYS, readJson, writeJson, readSessionJson, writeSessionJson } from './localStorage';
 import { generateApplicationId } from '../utils/applicationId';
 import { sendEvent } from './alloyService';
 import { EVENT_TYPES } from '../utils/events';
@@ -23,6 +23,30 @@ function getAll() {
 
 function saveAll(apps) {
   writeJson(KEYS.LOAN_APPLICATIONS, apps);
+}
+
+export function saveApplicationProgress(applicationId, fields) {
+  const progress = readSessionJson(KEYS.APPLICATION_PROGRESS, {});
+  progress[applicationId] = {
+    ...(progress[applicationId] || {}),
+    ...fields,
+    lastUpdated: new Date().toISOString(),
+  };
+  writeSessionJson(KEYS.APPLICATION_PROGRESS, progress);
+  return progress[applicationId];
+}
+
+export function getApplicationProgress(applicationId) {
+  const progress = readSessionJson(KEYS.APPLICATION_PROGRESS, {});
+  return progress[applicationId] || null;
+}
+
+export function clearApplicationProgress(applicationId) {
+  const progress = readSessionJson(KEYS.APPLICATION_PROGRESS, {});
+  if (!progress[applicationId]) return null;
+  delete progress[applicationId];
+  writeSessionJson(KEYS.APPLICATION_PROGRESS, progress);
+  return progress;
 }
 
 /**
@@ -86,6 +110,7 @@ export function submitApplication(applicationId, fields) {
   };
   apps[idx] = updated;
   saveAll(apps);
+  clearApplicationProgress(applicationId);
 
   sendEvent(EVENT_TYPES.APPLICATION_SUBMITTED, {
     customerId: updated.customerId,

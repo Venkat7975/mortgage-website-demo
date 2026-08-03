@@ -11,6 +11,8 @@ export const KEYS = {
   CUSTOMER_EVENTS: `${PREFIX}customerEvents`,
   SESSION_EVENTS: `${PREFIX}sessionEvents`,
   LOAN_APPLICATIONS: `${PREFIX}loanApplications`,
+  APPLICATION_PROGRESS: `${PREFIX}applicationProgress`,
+  ELIGIBILITY_PROGRESS: `${PREFIX}eligibilityProgress`,
   CONSENT_PREFIX: `${PREFIX}consent_`, // + customerId
 };
 

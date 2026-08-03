@@ -1,14 +1,22 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem,
   Button, Stack, Alert, Typography, Box,
 } from '@mui/material';
 import { evaluateEligibility } from '../utils/eligibility';
-import { sendEvent } from '../services/alloyService';
+import {
+  sendEvent, saveEligibilityProgress, getEligibilityProgress,
+} from '../services/alloyService';
 import { EVENT_TYPES } from '../utils/events';
 import { useAuth } from '../context/AuthContext';
 
 const EMPLOYMENT_TYPES = ['Salaried', 'Self-Employed', 'Business Owner', 'Retired'];
+
+function filledFields(object) {
+  return Object.fromEntries(
+    Object.entries(object).filter(([, value]) => value !== '' && value !== undefined && value !== null)
+  );
+}
 
 export default function EligibilityForm({ open, onClose, category }) {
   const { user } = useAuth();
@@ -21,7 +29,29 @@ export default function EligibilityForm({ open, onClose, category }) {
   });
   const [result, setResult] = useState(null);
 
-  const update = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
+  useEffect(() => {
+    if (!open) return;
+    const progress = getEligibilityProgress(category);
+    if (progress) {
+      setForm((f) => ({
+        ...f,
+        ...progress,
+      }));
+    }
+  }, [open, category]);
+
+  const update = (field) => (e) => {
+    const value = e.target.value;
+    const nextForm = { ...form, [field]: value };
+    setForm(nextForm);
+    saveEligibilityProgress(category, nextForm);
+    sendEvent(EVENT_TYPES.ELIGIBILITY_FORM_UPDATED, {
+      customerId: user?.customerId || 'anonymous',
+      category,
+      updatedField: field,
+      filledFields: filledFields(nextForm),
+    });
+  };
 
   const handleCheck = () => {
     const payload = {
@@ -42,6 +72,16 @@ export default function EligibilityForm({ open, onClose, category }) {
   };
 
   const handleClose = () => {
+    const partial = filledFields(form);
+    if (Object.keys(partial).length > 0) {
+      sendEvent(EVENT_TYPES.ELIGIBILITY_FORM_UPDATED, {
+        customerId: user?.customerId || 'anonymous',
+        category,
+        reason: 'dialog_closed',
+        filledFields: partial,
+      });
+    }
+
     setResult(null);
     setForm({ annualIncome: '', employmentType: 'Salaried', existingLoans: '0', creditScore: '', loanAmount: '' });
     onClose();

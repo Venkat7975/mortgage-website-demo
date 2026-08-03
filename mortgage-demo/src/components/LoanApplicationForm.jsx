@@ -4,14 +4,19 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem,
   Button, Stack, Grid, Typography, Chip,
 } from '@mui/material';
-import { openApplication, submitApplication, saveDraftFields } from '../services/applicationService';
+import {
+  openApplication, submitApplication, saveDraftFields,
+  saveApplicationProgress, getApplicationProgress, clearApplicationProgress,
+} from '../services/applicationService';
 import { sendEvent } from '../services/alloyService';
 import { EVENT_TYPES } from '../utils/events';
 import { useAuth } from '../context/AuthContext';
+import { CATEGORY_LIST } from '../data/loanCategories';
 
 const EMPLOYMENT_TYPES = ['Salaried', 'Self-Employed', 'Business Owner', 'Retired'];
 
 const BLANK_FORM = {
+  category: 'Home',
   fullName: '', email: '', mobile: '', propertyValue: '', loanAmount: '',
   annualIncome: '', employmentType: 'Salaried', address: '',
 };
@@ -59,6 +64,7 @@ export default function LoanApplicationForm({ open, onClose, category, existingA
       setApplication(existingApplication);
       setForm((f) => ({
         ...f,
+        category: existingApplication.category || category || 'Home',
         fullName: existingApplication.fullName || `${user.firstName} ${user.lastName}`,
         email: existingApplication.email || user.email,
         mobile: existingApplication.mobile || user.mobile,
@@ -71,13 +77,16 @@ export default function LoanApplicationForm({ open, onClose, category, existingA
       return;
     }
 
-    const record = openApplication({ customerId: user.customerId, category });
+    const record = openApplication({ customerId: user.customerId, category: category || 'Home' });
     setApplication(record);
+    const progress = getApplicationProgress(record.applicationId);
     setForm((f) => ({
       ...f,
+      category: category || 'Home',
       fullName: `${user.firstName} ${user.lastName}`,
       email: user.email,
       mobile: user.mobile,
+      ...(progress || {}),
     }));
   }, [open, user, category, application, existingApplication]);
 
@@ -93,10 +102,11 @@ export default function LoanApplicationForm({ open, onClose, category, existingA
       const partial = filledFields(currentForm);
       if (Object.keys(partial).length === 0) return;
       saveDraftFields(app.applicationId, numericFields(currentForm));
+      saveApplicationProgress(app.applicationId, currentForm);
       sendEvent(EVENT_TYPES.APPLICATION_FORM_ABANDONED, {
         customerId: app.customerId,
         applicationId: app.applicationId,
-        category: app.category,
+        category: currentForm.category || app.category,
         reason: 'tab_closed',
         filledFields: partial,
       });
@@ -106,11 +116,31 @@ export default function LoanApplicationForm({ open, onClose, category, existingA
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [open]);
 
-  const update = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
+  const update = (field) => (e) => {
+    const nextValue = e.target.value;
+    const nextForm = { ...form, [field]: nextValue };
+    setForm(nextForm);
+    if (application) {
+      saveApplicationProgress(application.applicationId, nextForm);
+      saveDraftFields(application.applicationId, numericFields(nextForm));
+      sendEvent(EVENT_TYPES.APPLICATION_FORM_UPDATED, {
+        customerId: application.customerId,
+        applicationId: application.applicationId,
+        category: nextForm.category || application.category,
+        updatedField: field,
+        filledFields: filledFields(nextForm),
+      });
+      if (field === 'category') {
+        setApplication((app) => ({ ...app, category: nextValue }));
+        saveDraftFields(application.applicationId, { category: nextValue });
+      }
+    }
+  };
 
   const handleSubmit = () => {
     if (!application) return;
     submitApplication(application.applicationId, numericFields(form));
+    clearApplicationProgress(application.applicationId);
     setSubmitted(true);
   };
 
@@ -123,10 +153,11 @@ export default function LoanApplicationForm({ open, onClose, category, existingA
       const partial = filledFields(form);
       if (Object.keys(partial).length > 0) {
         saveDraftFields(application.applicationId, numericFields(form));
+        saveApplicationProgress(application.applicationId, form);
         sendEvent(EVENT_TYPES.APPLICATION_FORM_ABANDONED, {
           customerId: application.customerId,
           applicationId: application.applicationId,
-          category: application.category,
+          category: form.category || application.category,
           reason: 'dialog_closed',
           filledFields: partial,
         });
@@ -173,6 +204,21 @@ export default function LoanApplicationForm({ open, onClose, category, existingA
           </Stack>
         ) : (
           <Grid container spacing={2.5} sx={{ mt: 0.5 }}>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                label="Loan Category"
+                select
+                value={form.category}
+                onChange={update('category')}
+                fullWidth
+              >
+                {CATEGORY_LIST.map((item) => (
+                  <MenuItem key={item.key} value={item.key}>
+                    {item.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
               <TextField label="Full Name" value={form.fullName} onChange={update('fullName')} fullWidth />
             </Grid>
