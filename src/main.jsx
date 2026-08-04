@@ -6,6 +6,9 @@ import theme from './theme.js'
 import './index.css'
 import App from './App.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'
+import { initDataLayer } from './services/dataLayerService.js'
+
+initDataLayer()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

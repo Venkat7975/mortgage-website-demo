@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { KEYS, readJson } from '../services/localStorage';
 import { simulateDecision, detectAbandonedApplications, APPLICATION_STATUS } from '../services/applicationService';
 import { getEventLog, getSessionEventLog } from '../services/alloyService';
+import { getDigitalData, getAdobeDataLayer } from '../services/dataLayerService';
 import StatusChip from '../components/StatusChip';
 
 const DARK = '#12283B';
@@ -46,6 +47,8 @@ export default function Admin() {
   const applications = readJson(KEYS.LOAN_APPLICATIONS, []);
   const events = [...getEventLog()].reverse();
   const sessionEvents = [...getSessionEventLog()].reverse();
+  const digitalData = getDigitalData();
+  const adobeDataLayer = [...getAdobeDataLayer()].reverse();
 
   const renderDetail = (e) => Object.entries(e)
     .filter(([k]) => !['eventType', 'xdmEventType', 'timestamp', 'customerId'].includes(k))
@@ -176,6 +179,45 @@ export default function Admin() {
                     )}
                   </TableBody>
                 </Table>
+              </Box>
+            </Panel>
+          </Grid>
+
+          <Grid size={12}>
+            <Panel title="window.digitalData — Adobe Client Data Layer (classic model)">
+              <Box
+                component="pre"
+                sx={{
+                  m: 0, maxHeight: 320, overflow: 'auto', fontSize: '0.72rem', lineHeight: 1.6,
+                  color: '#DCE7F0', fontFamily: '"IBM Plex Mono", monospace',
+                }}
+              >
+                {JSON.stringify(digitalData, null, 2)}
+              </Box>
+            </Panel>
+          </Grid>
+
+          <Grid size={12}>
+            <Panel title={`window.adobeDataLayer — ACDL pushes (${adobeDataLayer.length})`}>
+              <Box sx={{ maxHeight: 280, overflowY: 'auto' }}>
+                {adobeDataLayer.length === 0 && (
+                  <Typography sx={{ color: MUTED, fontSize: '0.85rem' }}>No pushes yet.</Typography>
+                )}
+                <Stack spacing={1}>
+                  {adobeDataLayer.map((record, i) => (
+                    <Box
+                      key={i}
+                      component="pre"
+                      sx={{
+                        m: 0, p: 1.25, bgcolor: DARK, border: `1px solid ${DARK_HAIRLINE}`,
+                        fontSize: '0.7rem', color: '#DCE7F0', fontFamily: '"IBM Plex Mono", monospace',
+                        overflowX: 'auto',
+                      }}
+                    >
+                      {JSON.stringify(record)}
+                    </Box>
+                  ))}
+                </Stack>
               </Box>
             </Panel>
           </Grid>

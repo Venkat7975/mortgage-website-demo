@@ -69,10 +69,33 @@ Open the printed local URL (defaults to `http://localhost:5173`).
   developer-styled dashboard for inspecting every customer, application,
   and event in storage, split into a **"This Browser Session"** panel
   (sessionStorage — clears the moment the tab closes) and an **"all time"**
-  panel (localStorage — persists across visits). Also has buttons to
-  simulate an Approve/Reject decision on submitted applications
+  panel (localStorage — persists across visits), plus live views of
+  `window.digitalData` and `window.adobeDataLayer` (see below). Also has
+  buttons to simulate an Approve/Reject decision on submitted applications
   (`applicationStatusChanged` event) and a "Reset Demo Data" button that
   clears both storage layers.
+- **Adobe Client Data Layer** (`src/services/dataLayerService.js`) — every
+  event fired through `sendEvent()` also populates two real,
+  inspectable data layer objects on `window`:
+  - `window.digitalData` — the classic Adobe/W3C-style object model
+    (`page`, `user`, `loanApplication`, `eligibility`, `event[]`), kept
+    current so a Launch rule bound to "state" (not just events) has
+    something to read.
+  - `window.adobeDataLayer` — the newer ACDL array pattern
+    (`.push({...})`), the same shape GTM's `dataLayer` uses. Each push
+    also dispatches a real `adobeDataLayer:push` DOM event, mirroring the
+    real Adobe Client Data Layer library's behavior, so a listener can
+    react without polling.
+
+  Both update live and are visible in the Admin panel, or straight from
+  devtools (`window.digitalData`, `window.adobeDataLayer`).
+- **One unified application form for every loan type**
+  (`src/components/LoanApplicationForm.jsx`) — rather than four separate
+  forms, there's a single form with a **Loan Category dropdown** at the
+  top. It's reachable from any category page (pre-selects that category,
+  but you can still change it) *and* from an "Apply for a Loan" button in
+  the navbar/mobile menu that's available from anywhere on the site with
+  no category preselected.
 
 ## Local vs. session storage
 

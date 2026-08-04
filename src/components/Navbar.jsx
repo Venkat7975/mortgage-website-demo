@@ -8,6 +8,7 @@ import MenuIcon from '@mui/icons-material/Menu';
 import AccountCircleOutlinedIcon from '@mui/icons-material/AccountCircleOutlined';
 import { useAuth } from '../context/AuthContext';
 import { COLORS } from '../theme';
+import LoanApplicationForm from './LoanApplicationForm';
 
 const NAV_LINKS = [
   { label: 'Home', to: '/' },
@@ -23,11 +24,20 @@ export default function Navbar() {
   const isNarrow = useMediaQuery('(max-width:960px)');
   const [anchorEl, setAnchorEl] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [applyOpen, setApplyOpen] = useState(false);
 
   const handleLogout = () => {
     setAnchorEl(null);
     logout();
     navigate('/');
+  };
+
+  const handleApplyClick = () => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    setApplyOpen(true);
   };
 
   return (
@@ -71,6 +81,14 @@ export default function Navbar() {
 
         <Box sx={{ flexGrow: isNarrow ? 1 : 0 }} />
 
+        <Button
+          onClick={handleApplyClick}
+          variant="contained" color="secondary" size="small"
+          sx={{ mr: 1, display: { xs: 'none', sm: 'inline-flex' } }}
+        >
+          Apply for a Loan
+        </Button>
+
         {user ? (
           <>
             <Button
@@ -112,6 +130,10 @@ export default function Navbar() {
             Meridian
           </Typography>
           <List>
+            <ListItemButton onClick={() => { setDrawerOpen(false); handleApplyClick(); }}>
+              <ListItemText primary="Apply for a Loan" primaryTypographyProps={{ fontWeight: 700, color: COLORS.brassDark }} />
+            </ListItemButton>
+            <Divider />
             {NAV_LINKS.map((link) => (
               <ListItemButton key={link.to} component={RouterLink} to={link.to}>
                 <ListItemText primary={link.label} />
@@ -134,6 +156,8 @@ export default function Navbar() {
           </List>
         </Box>
       </Drawer>
+
+      <LoanApplicationForm open={applyOpen} onClose={() => setApplyOpen(false)} category="Home" />
     </AppBar>
   );
 }

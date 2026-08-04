@@ -1,7 +1,11 @@
 import {
   KEYS, readJson, writeJson, readSessionJson, writeSessionJson,
 } from './localStorage';
-import { AEP_EVENT_MAP, nowIso } from '../utils/events';
+import { AEP_EVENT_MAP, EVENT_TYPES, nowIso } from '../utils/events';
+import {
+  pushToAdobeDataLayer, pushDigitalDataEvent, setPageInfo,
+  setUserProfile, clearUserProfile, setLoanApplicationInfo, setEligibilityInfo,
+} from './dataLayerService';
 
 // This simulates the call you'd eventually make to the real Adobe Web SDK:
 //
@@ -55,6 +59,45 @@ export function sendEvent(eventType, detail = {}) {
   sessionEvents.push(payload);
   writeSessionJson(KEYS.SESSION_EVENTS, sessionEvents);
 
+  // --- Adobe data layer wiring --------------------------------------
+  // Every event that goes through here also lands in window.adobeDataLayer
+  // (ACDL push pattern) and window.digitalData.event (classic pattern),
+  // plus updates the relevant digitalData section so a Launch rule bound
+  // to page/user/loanApplication/eligibility state sees current values,
+  // not just the event stream.
+  pushToAdobeDataLayer({ event: eventType, ...detail, timestamp });
+  pushDigitalDataEvent(eventType, detail);
+
+  switch (eventType) {
+    case EVENT_TYPES.PAGE_VIEW:
+      setPageInfo({ pageName: detail.pageName, path: detail.path, category: detail.category });
+      break;
+    case EVENT_TYPES.LOGIN:
+    case EVENT_TYPES.REGISTRATION:
+    case EVENT_TYPES.PROFILE_UPDATED:
+      if (detail.user) setUserProfile(detail.user);
+      break;
+    case EVENT_TYPES.LOGOUT:
+      clearUserProfile();
+      break;
+    case EVENT_TYPES.CATEGORY_VIEWED:
+    case EVENT_TYPES.APPLICATION_OPENED:
+    case EVENT_TYPES.APPLICATION_SUBMITTED:
+    case EVENT_TYPES.APPLICATION_STATUS_CHANGED:
+      setLoanApplicationInfo({
+        applicationId: detail.applicationId || '',
+        category: detail.category || '',
+        status: detail.status || eventType,
+        loanAmount: detail.loanAmount,
+      });
+      break;
+    case EVENT_TYPES.ELIGIBILITY_CHECK:
+      setEligibilityInfo({ category: detail.category, result: detail.result });
+      break;
+    default:
+      break;
+  }
+
   return payload;
 }
 
@@ -78,28 +121,4 @@ export function getSessionEventLog() {
 
 export function clearSessionEventLog() {
   writeSessionJson(KEYS.SESSION_EVENTS, []);
-}
-
-export function saveEligibilityProgress(category, values) {
-  const progress = readSessionJson(KEYS.ELIGIBILITY_PROGRESS, {});
-  progress[category] = {
-    ...(progress[category] || {}),
-    ...values,
-    lastUpdated: nowIso(),
-  };
-  writeSessionJson(KEYS.ELIGIBILITY_PROGRESS, progress);
-  return progress[category];
-}
-
-export function getEligibilityProgress(category) {
-  const progress = readSessionJson(KEYS.ELIGIBILITY_PROGRESS, {});
-  return progress[category] || null;
-}
-
-export function clearEligibilityProgress(category) {
-  const progress = readSessionJson(KEYS.ELIGIBILITY_PROGRESS, {});
-  if (!progress[category]) return null;
-  delete progress[category];
-  writeSessionJson(KEYS.ELIGIBILITY_PROGRESS, progress);
-  return progress;
 }

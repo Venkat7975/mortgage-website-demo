@@ -16,6 +16,16 @@ export function findUserByEmail(email) {
   return users.find((u) => u.email.toLowerCase() === email.toLowerCase());
 }
 
+function toProfile(user) {
+  return {
+    customerId: user.customerId,
+    email: user.email,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    mobile: user.mobile,
+  };
+}
+
 /**
  * Registers a new user, or — if the email already exists — returns the
  * existing user so the permanent Customer ID is preserved, matching the
@@ -44,7 +54,7 @@ export function registerUser({ firstName, lastName, email, mobile, password }) {
   saveRegisteredUsers(users);
   writeJson(KEYS.CUSTOMER_PROFILE_PREFIX + customerId, toProfile(user));
 
-  sendEvent(EVENT_TYPES.REGISTRATION, { customerId, email });
+  sendEvent(EVENT_TYPES.REGISTRATION, { customerId, email, user: toProfile(user) });
 
   return { user, isNew: true };
 }
@@ -55,7 +65,7 @@ export function loginUser({ email, password }) {
     return { success: false, error: 'Invalid email or password.' };
   }
   writeJson(KEYS.CURRENT_USER, { customerId: user.customerId, email: user.email });
-  sendEvent(EVENT_TYPES.LOGIN, { customerId: user.customerId, email: user.email });
+  sendEvent(EVENT_TYPES.LOGIN, { customerId: user.customerId, email: user.email, user: toProfile(user) });
   return { success: true, user };
 }
 
@@ -77,16 +87,6 @@ export function getFullCurrentUser() {
   return findUserByEmail(current.email);
 }
 
-function toProfile(user) {
-  return {
-    customerId: user.customerId,
-    email: user.email,
-    firstName: user.firstName,
-    lastName: user.lastName,
-    mobile: user.mobile,
-  };
-}
-
 export function getProfile(customerId) {
   return readJson(KEYS.CUSTOMER_PROFILE_PREFIX + customerId, null);
 }
@@ -102,7 +102,7 @@ export function updateProfile(customerId, updates) {
   const profile = toProfile(users[idx]);
   writeJson(KEYS.CUSTOMER_PROFILE_PREFIX + customerId, profile);
 
-  sendEvent(EVENT_TYPES.PROFILE_UPDATED, { customerId, updatedFields: Object.keys(updates) });
+  sendEvent(EVENT_TYPES.PROFILE_UPDATED, { customerId, updatedFields: Object.keys(updates), user: profile });
 
   return profile;
 }
