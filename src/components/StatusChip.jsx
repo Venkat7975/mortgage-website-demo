@@ -7,7 +7,6 @@ const STATUS_COLORS = {
   Approved: { bg: '#E5F1EA', fg: '#2F6F4E' },
   Rejected: { bg: '#F7E7E2', fg: '#B4432D' },
   Cancelled: { bg: '#EFEFEF', fg: '#8A8A8A' },
-  Abandoned: { bg: '#F7E7E2', fg: '#B4432D' },
 };
 
 export default function StatusChip({ status }) {

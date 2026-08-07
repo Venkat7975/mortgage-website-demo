@@ -9,6 +9,7 @@ import AccountCircleOutlinedIcon from '@mui/icons-material/AccountCircleOutlined
 import { useAuth } from '../context/AuthContext';
 import { COLORS } from '../theme';
 import LoanApplicationForm from './LoanApplicationForm';
+import { isAdminUser } from './AdminRoute';
 
 const NAV_LINKS = [
   { label: 'Home', to: '/' },
@@ -105,9 +106,11 @@ export default function Navbar() {
               <MenuItem component={RouterLink} to="/profile" onClick={() => setAnchorEl(null)}>
                 Profile
               </MenuItem>
-              <MenuItem component={RouterLink} to="/admin" onClick={() => setAnchorEl(null)}>
-                Admin Panel
-              </MenuItem>
+              {isAdminUser(user) && (
+                <MenuItem component={RouterLink} to="/admin" onClick={() => setAnchorEl(null)}>
+                  Admin Panel
+                </MenuItem>
+              )}
               <Divider />
               <MenuItem onClick={handleLogout}>Logout</MenuItem>
             </Menu>
@@ -148,9 +151,11 @@ export default function Navbar() {
                 <ListItemButton component={RouterLink} to="/profile">
                   <ListItemText primary="Profile" />
                 </ListItemButton>
-                <ListItemButton component={RouterLink} to="/admin">
-                  <ListItemText primary="Admin Panel" />
-                </ListItemButton>
+                {isAdminUser(user) && (
+                  <ListItemButton component={RouterLink} to="/admin">
+                    <ListItemText primary="Admin Panel" />
+                  </ListItemButton>
+                )}
               </>
             )}
           </List>

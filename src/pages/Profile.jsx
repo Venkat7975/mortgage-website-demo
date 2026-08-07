@@ -5,7 +5,7 @@ import {
 } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
 import { updateProfile, getConsent, updateConsent } from '../services/customerService';
-import { getEventsForCustomer } from '../services/alloyService';
+import { getEventsForCustomer } from '../services/eventCaptureService';
 import EventTimeline from '../components/EventTimeline';
 import { COLORS } from '../theme';
 

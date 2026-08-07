@@ -2,6 +2,7 @@ import { Routes, Route } from 'react-router-dom'
 import { Box } from '@mui/material'
 import Navbar from './components/Navbar'
 import ProtectedRoute from './components/ProtectedRoute'
+import AdminRoute from './components/AdminRoute'
 import PageViewTracker from './components/PageViewTracker'
 import Home from './pages/Home'
 import Login from './pages/Login'
@@ -39,7 +40,7 @@ export default function App() {
         <Route path="/loans/commercial" element={<CommercialLoan />} />
         <Route path="/applications" element={<ProtectedRoute><Applications /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-        <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
+        <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>

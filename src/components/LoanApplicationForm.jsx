@@ -2,13 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem,
-  Button, Stack, Grid, Typography, Chip,
+  Button, Stack, Grid, Typography, Chip, Alert,
 } from '@mui/material';
 import { openApplication, submitApplication, saveDraftFields } from '../services/applicationService';
-import { sendEvent } from '../services/alloyService';
+import { captureEvent } from '../services/eventCaptureService';
 import { EVENT_TYPES } from '../utils/events';
 import { useAuth } from '../context/AuthContext';
 import { CATEGORY_LIST } from '../data/loanCategories';
+import { isValidEmail, isValidMobile } from '../utils/validation';
 
 const EMPLOYMENT_TYPES = ['Salaried', 'Self-Employed', 'Business Owner', 'Retired'];
 
@@ -29,12 +30,22 @@ function numericFields(form) {
   };
 }
 
-// Only report fields the person actually typed something into — an empty
-// "propertyValue: 0" for every abandoned form isn't useful signal.
+// Only report fields the person actually typed something into.
 function filledFields(form) {
   return Object.fromEntries(
     Object.entries(form).filter(([, v]) => v !== '' && v !== undefined && v !== null)
   );
+}
+
+function validateApplicationForm(form) {
+  const errors = {};
+  if (!form.fullName.trim()) errors.fullName = 'Full name is required.';
+  if (!isValidEmail(form.email)) errors.email = 'Enter a valid email address.';
+  if (!isValidMobile(form.mobile)) errors.mobile = 'Enter a valid 10-digit mobile number.';
+  if (!form.loanAmount || Number(form.loanAmount) <= 0) errors.loanAmount = 'Enter a loan amount greater than 0.';
+  if (!form.annualIncome || Number(form.annualIncome) <= 0) errors.annualIncome = 'Enter an annual income greater than 0.';
+  if (!form.address.trim()) errors.address = 'Address is required.';
+  return errors;
 }
 
 export default function LoanApplicationForm({ open, onClose, category, existingApplication = null }) {
@@ -42,6 +53,7 @@ export default function LoanApplicationForm({ open, onClose, category, existingA
   const navigate = useNavigate();
   const [application, setApplication] = useState(null);
   const [form, setForm] = useState(() => blankForm(category));
+  const [errors, setErrors] = useState({});
   const [submitted, setSubmitted] = useState(false);
 
   // Kept in sync with the latest state so the beforeunload handler (set up
@@ -52,10 +64,9 @@ export default function LoanApplicationForm({ open, onClose, category, existingA
   }, [application, form, submitted]);
 
   // Fires the moment the dialog opens — this is the "Apply Loan" click
-  // moment from the spec, independent of whether the form ever gets
-  // finished, so abandoned-application journeys have something to key off.
-  // When resuming a draft from My Applications, reuse the existing
-  // application record instead of opening a new one.
+  // moment, independent of whether the form ever gets finished. When
+  // resuming a draft from My Applications, reuse the existing application
+  // record instead of opening a new one.
   useEffect(() => {
     if (!open || !user || application) return;
 
@@ -89,7 +100,8 @@ export default function LoanApplicationForm({ open, onClose, category, existingA
 
   // Catches the person closing the browser tab/window mid-form (not just
   // clicking our own Close button). localStorage/sessionStorage writes are
-  // synchronous, so this reliably captures whatever was typed so far.
+  // synchronous, so this reliably captures whatever was typed so far —
+  // saved silently as a draft, no separate "abandoned" event/status.
   useEffect(() => {
     if (!open) return undefined;
 
@@ -99,41 +111,50 @@ export default function LoanApplicationForm({ open, onClose, category, existingA
       const partial = filledFields(currentForm);
       if (Object.keys(partial).length === 0) return;
       saveDraftFields(app.applicationId, numericFields(currentForm));
-      sendEvent(EVENT_TYPES.APPLICATION_FORM_ABANDONED, {
-        customerId: app.customerId,
-        applicationId: app.applicationId,
-        category: app.category,
-        reason: 'tab_closed',
-        filledFields: partial,
-      });
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [open]);
 
-  const update = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
+  const update = (field) => (e) => {
+    setForm((f) => ({ ...f, [field]: e.target.value }));
+    setErrors((err) => ({ ...err, [field]: undefined }));
+  };
 
   const handleSubmit = () => {
     if (!application) return;
+
+    const validationErrors = validateApplicationForm(form);
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      captureEvent(EVENT_TYPES.FORM_VALIDATION_ERROR, {
+        customerId: application.customerId,
+        applicationId: application.applicationId,
+        category: application.category,
+        form: 'loanApplication',
+        invalidFields: Object.keys(validationErrors),
+      });
+      return;
+    }
+
     submitApplication(application.applicationId, numericFields(form));
     setSubmitted(true);
   };
 
   const handleClose = () => {
     // If they're closing without having submitted, persist whatever was
-    // typed (so "Continue" from My Applications actually resumes with
-    // their data) and fire one consolidated event with exactly the fields
-    // they filled in.
+    // typed as a draft (so "Continue" from My Applications actually
+    // resumes with their data) and record it as one consolidated draft
+    // event with exactly the fields they filled in.
     if (application && !submitted) {
       const partial = filledFields(form);
       if (Object.keys(partial).length > 0) {
         saveDraftFields(application.applicationId, numericFields(form));
-        sendEvent(EVENT_TYPES.APPLICATION_FORM_ABANDONED, {
+        captureEvent(EVENT_TYPES.APPLICATION_DRAFT_SAVED, {
           customerId: application.customerId,
           applicationId: application.applicationId,
           category: application.category,
-          reason: 'dialog_closed',
           filledFields: partial,
         });
       }
@@ -141,6 +162,7 @@ export default function LoanApplicationForm({ open, onClose, category, existingA
 
     setApplication(null);
     setSubmitted(false);
+    setErrors({});
     setForm(blankForm(category));
     onClose();
   };
@@ -148,6 +170,7 @@ export default function LoanApplicationForm({ open, onClose, category, existingA
   const handleGoToApplications = () => {
     setApplication(null);
     setSubmitted(false);
+    setErrors({});
     setForm(blankForm(category));
     onClose();
     navigate('/applications');
@@ -179,6 +202,11 @@ export default function LoanApplicationForm({ open, onClose, category, existingA
           </Stack>
         ) : (
           <Grid container spacing={2.5} sx={{ mt: 0.5 }}>
+            {Object.keys(errors).length > 0 && (
+              <Grid size={12}>
+                <Alert severity="error">Please fix the highlighted fields before submitting.</Alert>
+              </Grid>
+            )}
             <Grid size={12}>
               <TextField
                 label="Loan Category" select value={form.category}
@@ -189,13 +217,22 @@ export default function LoanApplicationForm({ open, onClose, category, existingA
               </TextField>
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField label="Full Name" value={form.fullName} onChange={update('fullName')} fullWidth />
+              <TextField
+                label="Full Name" value={form.fullName} onChange={update('fullName')} fullWidth
+                error={Boolean(errors.fullName)} helperText={errors.fullName}
+              />
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField label="Email" value={form.email} onChange={update('email')} fullWidth />
+              <TextField
+                label="Email" value={form.email} onChange={update('email')} fullWidth
+                error={Boolean(errors.email)} helperText={errors.email}
+              />
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField label="Mobile" value={form.mobile} onChange={update('mobile')} fullWidth />
+              <TextField
+                label="Mobile" value={form.mobile} onChange={update('mobile')} fullWidth
+                error={Boolean(errors.mobile)} helperText={errors.mobile || '10-digit mobile number'}
+              />
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
               <TextField
@@ -213,12 +250,14 @@ export default function LoanApplicationForm({ open, onClose, category, existingA
               <TextField
                 label="Requested Loan Amount (₹)" type="number" value={form.loanAmount}
                 onChange={update('loanAmount')} fullWidth
+                error={Boolean(errors.loanAmount)} helperText={errors.loanAmount}
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
               <TextField
                 label="Annual Income (₹)" type="number" value={form.annualIncome}
                 onChange={update('annualIncome')} fullWidth
+                error={Boolean(errors.annualIncome)} helperText={errors.annualIncome}
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
@@ -233,6 +272,7 @@ export default function LoanApplicationForm({ open, onClose, category, existingA
               <TextField
                 label="Address" value={form.address} onChange={update('address')}
                 fullWidth multiline minRows={2}
+                error={Boolean(errors.address)} helperText={errors.address}
               />
             </Grid>
           </Grid>

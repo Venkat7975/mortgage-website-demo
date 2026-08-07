@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { sendEvent } from '../services/alloyService';
+import { captureEvent } from '../services/eventCaptureService';
 import { EVENT_TYPES, PAGE_NAMES } from '../utils/events';
 import { useAuth } from '../context/AuthContext';
 
@@ -22,7 +22,7 @@ export default function PageViewTracker() {
 
     const pageName = PAGE_NAMES[location.pathname] || location.pathname;
 
-    sendEvent(EVENT_TYPES.PAGE_VIEW, {
+    captureEvent(EVENT_TYPES.PAGE_VIEW, {
       customerId: user?.customerId || 'anonymous',
       path: location.pathname,
       pageName,

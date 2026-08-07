@@ -7,7 +7,7 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutlined';
 import EligibilityForm from '../components/EligibilityForm';
 import LoanApplicationForm from '../components/LoanApplicationForm';
 import { useAuth } from '../context/AuthContext';
-import { sendEvent } from '../services/alloyService';
+import { captureEvent } from '../services/eventCaptureService';
 import { EVENT_TYPES } from '../utils/events';
 import { COLORS } from '../theme';
 
@@ -18,7 +18,7 @@ export default function CategoryPage({ category }) {
   const [applyOpen, setApplyOpen] = useState(false);
 
   useEffect(() => {
-    sendEvent(EVENT_TYPES.CATEGORY_VIEWED, {
+    captureEvent(EVENT_TYPES.CATEGORY_VIEWED, {
       customerId: user?.customerId || 'anonymous',
       category: category.key,
     });

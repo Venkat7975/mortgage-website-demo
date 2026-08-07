@@ -4,7 +4,7 @@ import {
   Button, Stack, Alert, Typography, Box,
 } from '@mui/material';
 import { evaluateEligibility } from '../utils/eligibility';
-import { sendEvent } from '../services/alloyService';
+import { captureEvent } from '../services/eventCaptureService';
 import { EVENT_TYPES } from '../utils/events';
 import { useAuth } from '../context/AuthContext';
 
@@ -20,10 +20,36 @@ export default function EligibilityForm({ open, onClose, category }) {
     loanAmount: '',
   });
   const [result, setResult] = useState(null);
+  const [errors, setErrors] = useState({});
 
-  const update = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
+  const update = (field) => (e) => {
+    setForm((f) => ({ ...f, [field]: e.target.value }));
+    setErrors((err) => ({ ...err, [field]: undefined }));
+  };
 
   const handleCheck = () => {
+    const validationErrors = {};
+    if (!form.annualIncome || Number(form.annualIncome) <= 0) {
+      validationErrors.annualIncome = 'Enter an annual income greater than 0.';
+    }
+    if (!form.creditScore || Number(form.creditScore) < 300 || Number(form.creditScore) > 900) {
+      validationErrors.creditScore = 'Enter a credit score between 300 and 900.';
+    }
+    if (!form.loanAmount || Number(form.loanAmount) <= 0) {
+      validationErrors.loanAmount = 'Enter a loan amount greater than 0.';
+    }
+
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      captureEvent(EVENT_TYPES.FORM_VALIDATION_ERROR, {
+        customerId: user?.customerId || 'anonymous',
+        category,
+        form: 'eligibility',
+        invalidFields: Object.keys(validationErrors),
+      });
+      return;
+    }
+
     const payload = {
       annualIncome: Number(form.annualIncome) || 0,
       creditScore: Number(form.creditScore) || 0,
@@ -33,7 +59,7 @@ export default function EligibilityForm({ open, onClose, category }) {
     const evalResult = evaluateEligibility(payload);
     setResult(evalResult);
 
-    sendEvent(EVENT_TYPES.ELIGIBILITY_CHECK, {
+    captureEvent(EVENT_TYPES.ELIGIBILITY_CHECK, {
       customerId: user?.customerId || 'anonymous',
       category,
       result: evalResult.eligible ? 'Eligible' : 'Not Eligible',
@@ -43,6 +69,7 @@ export default function EligibilityForm({ open, onClose, category }) {
 
   const handleClose = () => {
     setResult(null);
+    setErrors({});
     setForm({ annualIncome: '', employmentType: 'Salaried', existingLoans: '0', creditScore: '', loanAmount: '' });
     onClose();
   };
@@ -57,6 +84,7 @@ export default function EligibilityForm({ open, onClose, category }) {
           <TextField
             label="Annual Income (₹)" type="number" value={form.annualIncome}
             onChange={update('annualIncome')} fullWidth
+            error={Boolean(errors.annualIncome)} helperText={errors.annualIncome}
           />
           <TextField
             label="Employment Type" select value={form.employmentType}
@@ -71,10 +99,12 @@ export default function EligibilityForm({ open, onClose, category }) {
           <TextField
             label="Credit Score" type="number" value={form.creditScore}
             onChange={update('creditScore')} fullWidth
+            error={Boolean(errors.creditScore)} helperText={errors.creditScore}
           />
           <TextField
             label="Loan Amount Required (₹)" type="number" value={form.loanAmount}
             onChange={update('loanAmount')} fullWidth
+            error={Boolean(errors.loanAmount)} helperText={errors.loanAmount}
           />
 
           {result && (

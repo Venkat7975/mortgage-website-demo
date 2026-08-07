@@ -1,6 +1,6 @@
 import { KEYS, readJson, writeJson } from './localStorage';
 import { generateApplicationId } from '../utils/applicationId';
-import { sendEvent } from './alloyService';
+import { captureEvent } from './eventCaptureService';
 import { EVENT_TYPES } from '../utils/events';
 
 export const APPLICATION_STATUS = {
@@ -10,12 +10,7 @@ export const APPLICATION_STATUS = {
   APPROVED: 'Approved',
   REJECTED: 'Rejected',
   CANCELLED: 'Cancelled',
-  ABANDONED: 'Abandoned',
 };
-
-// Minutes of inactivity on a Draft application before it's treated as
-// abandoned for demo/journey-testing purposes.
-const ABANDON_THRESHOLD_MINUTES = 30;
 
 function getAll() {
   return readJson(KEYS.LOAN_APPLICATIONS, []);
@@ -28,7 +23,7 @@ function saveAll(apps) {
 /**
  * Fired the moment a user clicks "Apply Loan" — creates the application
  * record immediately in Draft status, before any form fields are filled
- * in. This is what lets AJO abandoned-application journeys be tested.
+ * in, so there's a real record even if they never finish.
  */
 export function openApplication({ customerId, category }) {
   const applicationId = generateApplicationId();
@@ -46,7 +41,7 @@ export function openApplication({ customerId, category }) {
   apps.push(record);
   saveAll(apps);
 
-  sendEvent(EVENT_TYPES.APPLICATION_OPENED, { customerId, applicationId, category });
+  captureEvent(EVENT_TYPES.APPLICATION_OPENED, { customerId, applicationId, category });
 
   return record;
 }
@@ -87,7 +82,7 @@ export function submitApplication(applicationId, fields) {
   apps[idx] = updated;
   saveAll(apps);
 
-  sendEvent(EVENT_TYPES.APPLICATION_SUBMITTED, {
+  captureEvent(EVENT_TYPES.APPLICATION_SUBMITTED, {
     customerId: updated.customerId,
     applicationId,
     category: updated.category,
@@ -110,7 +105,7 @@ export function updateApplicationStatus(applicationId, status) {
   };
   saveAll(apps);
 
-  sendEvent(EVENT_TYPES.APPLICATION_STATUS_CHANGED, {
+  captureEvent(EVENT_TYPES.APPLICATION_STATUS_CHANGED, {
     customerId: apps[idx].customerId,
     applicationId,
     status,
@@ -135,48 +130,13 @@ export function addDocument(applicationId, doc) {
   };
   saveAll(apps);
 
-  sendEvent(EVENT_TYPES.DOCUMENT_UPLOADED, {
+  captureEvent(EVENT_TYPES.DOCUMENT_UPLOADED, {
     customerId: apps[idx].customerId,
     applicationId,
     documentName: doc.name,
   });
 
   return apps[idx];
-}
-
-/**
- * Scans Draft applications and marks any that have gone stale as
- * Abandoned, firing the applicationAbandoned event for each. Call this
- * on app load / My Applications page load to simulate the kind of
- * time-based journey trigger AJO would run server-side.
- */
-export function detectAbandonedApplications() {
-  const apps = getAll();
-  const now = Date.now();
-  let changed = false;
-
-  const next = apps.map((a) => {
-    if (a.status !== APPLICATION_STATUS.DRAFT) return a;
-    const ageMinutes = (now - new Date(a.openedAt).getTime()) / 60000;
-    if (ageMinutes < ABANDON_THRESHOLD_MINUTES) return a;
-
-    changed = true;
-    sendEvent(EVENT_TYPES.APPLICATION_ABANDONED, {
-      customerId: a.customerId,
-      applicationId: a.applicationId,
-      category: a.category,
-    });
-
-    return {
-      ...a,
-      status: APPLICATION_STATUS.ABANDONED,
-      updatedAt: new Date().toISOString(),
-      history: [...a.history, { status: APPLICATION_STATUS.ABANDONED, timestamp: new Date().toISOString() }],
-    };
-  });
-
-  if (changed) saveAll(next);
-  return next;
 }
 
 export function simulateDecision(applicationId, decision) {

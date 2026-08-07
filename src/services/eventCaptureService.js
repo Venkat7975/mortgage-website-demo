@@ -5,50 +5,48 @@ import { AEP_EVENT_MAP, EVENT_TYPES, nowIso } from '../utils/events';
 import {
   pushToAdobeDataLayer, pushDigitalDataEvent, setPageInfo,
   setUserProfile, clearUserProfile, setLoanApplicationInfo, setEligibilityInfo,
+  getIdentityMap,
 } from './dataLayerService';
 
-// This simulates the call you'd eventually make to the real Adobe Web SDK:
-//
-//   alloy("sendEvent", {
-//     xdm: {
-//       eventType: "mortgage.applicationOpened",
-//       ...
-//     }
-//   });
-//
-// For the demo, `sendEvent` builds the same XDM-shaped payload, logs it to
-// the console (so it's visible in devtools exactly like a real Alloy debug
-// trace), and writes it to TWO places:
+// captureEvent() is the single place every action in the site funnels
+// through. Nothing in this file makes a network call — "capturing" an
+// event means writing it into three places, all local to this browser:
 //
 //   1. localStorage `meridian_customerEvents` — a permanent, cross-session
-//      log. This is what the Admin panel's "Web SDK Event Log" reads from,
-//      and it's what the Event Timelines on Profile/Applications read from.
-//   2. sessionStorage `meridian_sessionEvents` — a "this visit only" log.
-//      The browser wipes sessionStorage automatically the moment the tab
-//      or browser closes, so this always reflects only the current
-//      session's activity (page views, eligibility checks, in-progress
-//      form fields, etc.) for as long as the person stays on the site.
+//      log. Read by the Admin panel's "Web SDK Event Log" and by the
+//      Event Timelines on Profile/Applications.
+//   2. sessionStorage `meridian_sessionEvents` — a "this visit only" log
+//      that the browser wipes automatically the moment the tab/browser
+//      closes.
+//   3. window.digitalData / window.adobeDataLayer — the two Adobe data
+//      layer patterns (see dataLayerService.js), including a full
+//      identityMap (ECID + email/customer ID once logged in) on every
+//      single event, matching how a real Adobe Web SDK XDM event is
+//      shaped.
 //
-// Swap this file out for a real Alloy Web SDK instance later — every call
-// site in the app already calls `sendEvent(eventType, detail)`, so nothing
-// else needs to change.
+// Wiring a real Adobe Web SDK in later just means replacing the body of
+// captureEvent() with the actual `alloy("sendEvent", { xdm: {...} })`
+// call — every call site in the app already calls
+// `captureEvent(eventType, detail)`, so nothing else changes.
 
-export function sendEvent(eventType, detail = {}) {
+export function captureEvent(eventType, detail = {}) {
   const xdmEventType = AEP_EVENT_MAP[eventType] || eventType;
   const timestamp = nowIso();
+  const identityMap = getIdentityMap();
 
   const payload = {
     eventType,
     xdmEventType,
     timestamp,
+    identityMap,
     ...detail,
   };
 
   // eslint-disable-next-line no-console
   console.log(
-    `%c[Alloy] sendEvent`,
+    `%c[DataLayer] event captured (stored locally only — not sent anywhere)`,
     'color:#B98A32;font-weight:600;',
-    { xdm: { eventType: xdmEventType, timestamp, ...detail } }
+    payload,
   );
 
   const events = readJson(KEYS.CUSTOMER_EVENTS, []);
@@ -65,7 +63,7 @@ export function sendEvent(eventType, detail = {}) {
   // plus updates the relevant digitalData section so a Launch rule bound
   // to page/user/loanApplication/eligibility state sees current values,
   // not just the event stream.
-  pushToAdobeDataLayer({ event: eventType, ...detail, timestamp });
+  pushToAdobeDataLayer(payload);
   pushDigitalDataEvent(eventType, detail);
 
   switch (eventType) {

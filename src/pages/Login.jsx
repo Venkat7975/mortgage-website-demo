@@ -2,22 +2,46 @@ import { useState } from 'react';
 import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box, Paper, Typography, TextField, Button, Stack, Alert, Link as MuiLink, Container,
+  IconButton, InputAdornment,
 } from '@mui/material';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import { useAuth } from '../context/AuthContext';
 import { COLORS } from '../theme';
+import { isValidEmail } from '../utils/validation';
+import { captureEvent } from '../services/eventCaptureService';
+import { EVENT_TYPES } from '../utils/events';
 
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [form, setForm] = useState({ email: '', password: '' });
+  const [fieldErrors, setFieldErrors] = useState({});
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
-  const update = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
+  const update = (field) => (e) => {
+    setForm((f) => ({ ...f, [field]: e.target.value }));
+    setFieldErrors((err) => ({ ...err, [field]: undefined }));
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     setError('');
+
+    const errors = {};
+    if (!isValidEmail(form.email)) errors.email = 'Enter a valid email address.';
+    if (!form.password) errors.password = 'Password is required.';
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      captureEvent(EVENT_TYPES.FORM_VALIDATION_ERROR, {
+        form: 'login', invalidFields: Object.keys(errors),
+      });
+      return;
+    }
+
     const result = login(form);
     if (!result.success) {
       setError(result.error);
@@ -35,11 +59,29 @@ export default function Login() {
           Log in to continue your application.
         </Typography>
 
-        <Box component="form" onSubmit={handleSubmit}>
+        <Box component="form" onSubmit={handleSubmit} noValidate>
           <Stack spacing={2.5}>
             {error && <Alert severity="error">{error}</Alert>}
-            <TextField label="Email" type="email" required value={form.email} onChange={update('email')} fullWidth />
-            <TextField label="Password" type="password" required value={form.password} onChange={update('password')} fullWidth />
+            <TextField
+              label="Email" type="email" value={form.email} onChange={update('email')} fullWidth
+              error={Boolean(fieldErrors.email)} helperText={fieldErrors.email}
+            />
+            <TextField
+              label="Password" type={showPassword ? 'text' : 'password'}
+              value={form.password} onChange={update('password')} fullWidth
+              error={Boolean(fieldErrors.password)} helperText={fieldErrors.password}
+              slotProps={{
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton onClick={() => setShowPassword((s) => !s)} edge="end" size="small">
+                        {showPassword ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                },
+              }}
+            />
             <Button type="submit" variant="contained" color="primary" size="large">Log In</Button>
           </Stack>
         </Box>

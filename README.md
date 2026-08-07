@@ -2,11 +2,10 @@
 
 A fully client-side demo banking site built to generate realistic customer,
 profile, and loan-application data for testing **Adobe Experience Platform
-(AEP)**, **Real-Time CDP**, and **Adobe Journey Optimizer (AJO)** — with a
-focus on triggered journeys like abandoned-application reminders and
-approval/rejection notifications.
+(AEP)**, **Real-Time CDP**, and **Adobe Journey Optimizer (AJO)**.
 
-Everything runs in the browser against `localStorage`; there is no backend.
+Everything runs in the browser against `localStorage`/`sessionStorage`;
+there is no backend and nothing is ever sent over the network.
 
 ## Stack
 
@@ -29,125 +28,111 @@ Open the printed local URL (defaults to `http://localhost:5173`).
 - **Registration / Login** (`src/pages/Register.jsx`, `Login.jsx`) — a
   permanent, globally-unique Customer ID (a real UUID, e.g.
   `CUST-8f14e45f-ceea-4c1a-9b3d-...`) is generated once per email and
-  reused on every subsequent login. Registering with an email that's
-  already in use no longer silently logs you in as that account — it
-  shows an error and points you to the login page instead.
+  reused on every subsequent login. Both forms validate email format,
+  10-digit mobile numbers, and password strength inline before
+  submitting, and registering with an already-used email is rejected
+  with a clear error rather than silently logging into that account.
 - **Category pages** for Home, Land, Vehicle, and Commercial loans, all
   rendered from one shared template (`src/pages/CategoryPage.jsx`) driven by
   `src/data/loanCategories.js`.
-- **Eligibility checker** (`src/components/EligibilityForm.jsx`) — simple,
-  readable rules in `src/utils/eligibility.js`. Every check (inputs +
-  result) is logged as an `eligibilityCheck` event to both local and
-  session storage.
-- **Loan application flow** (`src/components/LoanApplicationForm.jsx`) — an
-  application record (and the `applicationOpened` event) is created the
-  instant the dialog opens, *before* any fields are filled in, so you can
-  test abandoned-application journeys. Submitting fires
-  `applicationSubmitted`. Closing the dialog *without* submitting now
-  actually saves whatever was typed as a draft (this used to be silently
-  discarded) and fires a separate `applicationFormAbandoned` event
-  containing exactly the fields the person filled in — including if they
-  close the browser tab mid-form (via a `beforeunload` listener).
-- **Page view tracking** (`src/components/PageViewTracker.jsx`) — fires a
-  `pageView` event with the page name and path on every route change.
-  Previously this only fired once on initial load; client-side navigation
-  between pages wasn't tracked at all.
+- **Eligibility checker** (`src/components/EligibilityForm.jsx`) — validated
+  inputs, readable rules in `src/utils/eligibility.js`. Every check (inputs
+  + result) is captured as an `eligibilityCheck` event.
+- **One unified loan application form for every category**
+  (`src/components/LoanApplicationForm.jsx`) — a single form with a
+  **Loan Category dropdown** at the top, reachable from any category page
+  (pre-selects that category, but you can change it) or from the global
+  "Apply for a Loan" button in the navbar. An application record is
+  created the instant the dialog opens — before any fields are filled in
+  — and validates full name, email, phone, loan amount, income, and
+  address before allowing submission.
 - **My Applications** (`src/pages/Applications.jsx`) — view, continue a
-  draft (now actually resumes with previously-typed data), cancel, upload
-  a mock document, and see the event trail for that specific application.
-- **Abandonment detection** — any Draft application older than 30 minutes
-  is automatically flipped to `Abandoned` (see
-  `detectAbandonedApplications()` in `src/services/applicationService.js`)
-  and fires `applicationAbandoned`. This is separate from
-  `applicationFormAbandoned` above — this one is a time-based/server-style
-  trigger with no field data; that one is immediate and carries whatever
-  was typed. Change `ABANDON_THRESHOLD_MINUTES` to test faster.
+  draft (resumes with previously-typed data), cancel, upload a mock
+  document, and see the event trail for that specific application.
 - **Profile** (`src/pages/Profile.jsx`) — editable details, an
   email/SMS/marketing consent panel (`consentUpdated` event), and a
   per-customer activity timeline.
-- **Admin panel** (`src/pages/Admin.jsx`, at `/admin`) — a dark,
-  developer-styled dashboard for inspecting every customer, application,
-  and event in storage, split into a **"This Browser Session"** panel
-  (sessionStorage — clears the moment the tab closes) and an **"all time"**
-  panel (localStorage — persists across visits), plus live views of
-  `window.digitalData` and `window.adobeDataLayer` (see below). Also has
-  buttons to simulate an Approve/Reject decision on submitted applications
-  (`applicationStatusChanged` event) and a "Reset Demo Data" button that
-  clears both storage layers.
-- **Adobe Client Data Layer** (`src/services/dataLayerService.js`) — every
-  event fired through `sendEvent()` also populates two real,
-  inspectable data layer objects on `window`:
-  - `window.digitalData` — the classic Adobe/W3C-style object model
-    (`page`, `user`, `loanApplication`, `eligibility`, `event[]`), kept
-    current so a Launch rule bound to "state" (not just events) has
-    something to read.
-  - `window.adobeDataLayer` — the newer ACDL array pattern
-    (`.push({...})`), the same shape GTM's `dataLayer` uses. Each push
-    also dispatches a real `adobeDataLayer:push` DOM event, mirroring the
-    real Adobe Client Data Layer library's behavior, so a listener can
-    react without polling.
+- **Admin panel** (`src/pages/Admin.jsx`, at `/admin`) — **restricted to
+  the single account `admin@mortgage.com`** (see
+  `src/components/AdminRoute.jsx`); the nav link is hidden for everyone
+  else and the route itself blocks access. Register with that exact
+  email to view it. Shows every customer, application, and event in
+  storage — split into "This Browser Session" (sessionStorage, clears on
+  tab close) and "all time" (localStorage) — plus live `window.digitalData`
+  and `window.adobeDataLayer` views, the current ECID/identityMap, and
+  buttons to simulate an Approve/Reject decision or reset all demo data.
 
-  Both update live and are visible in the Admin panel, or straight from
-  devtools (`window.digitalData`, `window.adobeDataLayer`).
-- **One unified application form for every loan type**
-  (`src/components/LoanApplicationForm.jsx`) — rather than four separate
-  forms, there's a single form with a **Loan Category dropdown** at the
-  top. It's reachable from any category page (pre-selects that category,
-  but you can still change it) *and* from an "Apply for a Loan" button in
-  the navbar/mobile menu that's available from anywhere on the site with
-  no category preselected.
+## Every action is captured — locally, not sent anywhere
 
-## Local vs. session storage
+All user actions funnel through one function,
+`captureEvent(eventType, detail)` in `src/services/eventCaptureService.js`.
+"Capturing" an event means writing it to three places, all local to the
+browser — nothing here makes a network call:
 
-Every event fired through `sendEvent()` is now written to **both**:
+1. **localStorage** `meridian_customerEvents` — a permanent, cross-session
+   log (the Admin panel's "all time" view).
+2. **sessionStorage** `meridian_sessionEvents` — cleared automatically the
+   moment the tab/browser closes (the Admin panel's "This Browser
+   Session" view).
+3. **`window.digitalData`** and **`window.adobeDataLayer`** — see below.
 
-- **localStorage** (`meridian_customerEvents`) — permanent, survives
-  closing the browser. This is the "all time" log.
-- **sessionStorage** (`meridian_sessionEvents`) — cleared automatically by
-  the browser the moment the tab/window closes. This is the "current
-  visit only" log, which is what you asked for: everything a person does
-  stays available until they actually leave/close the page, then it's
-  gone.
+This includes *failed* actions, not just successes: a wrong password
+(`loginFailed`), a duplicate-email registration attempt
+(`registrationFailed`), and any form submitted with invalid data
+(`formValidationError`, with the list of invalid fields) are all captured
+the same way as successful actions.
 
-Both are readable from `src/services/alloyService.js`
-(`getEventLog()` / `getSessionEventLog()`), and both show up as separate
-panels in the Admin page.
+## Adobe Client Data Layer
 
-## Local storage layout
+Every captured event also updates two real, inspectable data layer
+objects on `window`, both visible live in the Admin panel or straight from
+devtools:
 
-All keys are namespaced with `meridian_`:
+- **`window.digitalData`** — the classic Adobe/W3C-style object model
+  (`page`, `user`, `loanApplication`, `eligibility`, `identityMap`,
+  `event[]`), kept current so a Launch rule bound to *state* (not just
+  events) has something to read.
+- **`window.adobeDataLayer`** — the newer ACDL array pattern
+  (`.push({...})`), the same shape GTM's `dataLayer` uses. Each push also
+  dispatches a real `adobeDataLayer:push` DOM event, mirroring the actual
+  Adobe Client Data Layer library, so a listener can react without
+  polling.
 
-| Key | Contents |
-|---|---|
-| `meridian_registeredUsers` | Array of full user records (including password — demo only) |
-| `meridian_currentUser` | `{ customerId, email }` for the active session |
-| `meridian_customerProfile_<id>` | Public-safe profile snapshot per customer |
-| `meridian_customerEvents` | Flat array of every event fired site-wide |
-| `meridian_loanApplications` | Array of all loan applications, all customers |
-| `meridian_consent_<id>` | Per-customer communication preferences |
+### ECID & identityMap
+
+`src/utils/ecid.js` generates a persistent, Adobe-style ECID (a long
+numeric ID, stored once per browser in localStorage — the same "sticks
+around across sessions" behavior as the real Adobe Identity Service) and
+builds an XDM-shaped `identityMap` attached to **every single captured
+event**, exactly like a real Adobe Web SDK event:
+
+```json
+{
+  "ECID": [{ "id": "...", "primary": true, "authenticatedState": "ambiguous" }],
+  "Email": [{ "id": "person@example.com", "primary": true, "authenticatedState": "authenticated" }],
+  "CRMID": [{ "id": "CUST-...", "primary": false, "authenticatedState": "authenticated" }]
+}
+```
+
+Before login, only `ECID` is present (`authenticatedState: "ambiguous"`).
+After login/registration, `Email` and `CRMID` are added and marked
+`authenticated`, and the `ECID` entry's `primary` flag flips to `false` —
+matching how a real implementation stitches an anonymous browser identity
+to a known customer after authentication.
 
 ## Wiring up the real Adobe Web SDK (Alloy.js)
 
-Every event in the app already funnels through one function:
-
-```js
-// src/services/alloyService.js
-sendEvent(eventType, detail)
-```
-
-Right now `sendEvent` logs an XDM-shaped payload to the console and appends
-it to `meridian_customerEvents` (which is what powers the Admin panel and
-Event Timeline). To go live:
+Everything funnels through `captureEvent()`. To go live:
 
 1. Add the Alloy.js tag/npm package and initialize it per Adobe's setup
    guide for your datastream.
-2. Replace the body of `sendEvent` with a real call:
+2. Replace the body of `captureEvent` with a real call:
 
    ```js
-   export function sendEvent(eventType, detail = {}) {
+   export function captureEvent(eventType, detail = {}) {
      const xdmEventType = AEP_EVENT_MAP[eventType] || eventType;
      window.alloy('sendEvent', {
-       xdm: { eventType: xdmEventType, timestamp: nowIso(), ...detail },
+       xdm: { eventType: xdmEventType, timestamp: nowIso(), identityMap: getIdentityMap(), ...detail },
      });
    }
    ```
@@ -156,34 +141,25 @@ Event Timeline). To go live:
    checks, application lifecycle, profile/consent updates) stays exactly
    the same — nothing else in the app needs to change.
 
-The recommended website-event → AEP XDM `eventType` mapping lives in
-`src/utils/events.js` (`AEP_EVENT_MAP`), matching the table from the
-original spec.
-
-## Not included (by design, for a client-only demo)
-
-- A real backend / mock REST API (JSON Server) — everything is
-  `localStorage`, which keeps the demo a single `npm run dev` away from
-  running and is enough to generate realistic profile + event data.
-- Real authentication/password hashing — passwords are stored in plain
-  text in `localStorage` for demo purposes only. Do not reuse this auth
-  code for anything real.
+The website-event → AEP XDM `eventType` mapping lives in
+`src/utils/events.js` (`AEP_EVENT_MAP`).
 
 ## Project structure
 
 ```
 src/
-├── pages/            Login, Register, ForgotPassword, Home, CategoryPage
-│                      (+ HomeLoan/LandLoan/VehicleLoan/CommercialLoan
-│                      thin wrappers), Applications, Profile, Admin
-├── components/        Navbar, LoanCard, EligibilityForm,
-│                      LoanApplicationForm, EventTimeline, StatusChip,
-│                      ProtectedRoute
-├── context/            AuthContext.jsx
-├── services/           localStorage.js, customerService.js,
-│                      applicationService.js, alloyService.js
-├── utils/              customerId.js, applicationId.js, events.js,
-│                      eligibility.js
-├── data/                loanCategories.js
+├── pages/              Login, Register, ForgotPassword, Home, CategoryPage
+│                        (+ HomeLoan/LandLoan/VehicleLoan/CommercialLoan
+│                        thin wrappers), Applications, Profile, Admin
+├── components/          Navbar, LoanCard, EligibilityForm,
+│                        LoanApplicationForm, EventTimeline, StatusChip,
+│                        ProtectedRoute, AdminRoute, PageViewTracker
+├── context/              AuthContext.jsx
+├── services/             localStorage.js, customerService.js,
+│                        applicationService.js, eventCaptureService.js,
+│                        dataLayerService.js
+├── utils/                customerId.js, applicationId.js, events.js,
+│                        eligibility.js, validation.js, ecid.js
+├── data/                  loanCategories.js
 └── theme.js
 ```

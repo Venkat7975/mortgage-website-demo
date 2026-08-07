@@ -4,7 +4,7 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import LoanCard from '../components/LoanCard';
 import { CATEGORY_LIST } from '../data/loanCategories';
 import { useAuth } from '../context/AuthContext';
-import { sendEvent } from '../services/alloyService';
+import { captureEvent } from '../services/eventCaptureService';
 import { EVENT_TYPES } from '../utils/events';
 import { COLORS } from '../theme';
 
@@ -83,7 +83,7 @@ export default function Home() {
               <LoanCard
                 category={category}
                 to={`/loans/${category.key.toLowerCase()}`}
-                onClick={() => sendEvent(EVENT_TYPES.CATEGORY_VIEWED, {
+                onClick={() => captureEvent(EVENT_TYPES.CATEGORY_VIEWED, {
                   customerId: user?.customerId || 'anonymous',
                   category: category.key,
                 })}

@@ -1,7 +1,7 @@
 // Populates the two data-layer patterns most commonly used in Adobe
 // implementations, so Adobe Launch rules (or anything else that reads off
 // the page) have something real to bind to — independent of the
-// alloyService's simulated sendEvent() calls.
+// eventCaptureService's captureEvent() calls.
 //
 //   1. window.digitalData        — the classic Adobe/W3C-style object
 //      model (digitalData.page, digitalData.user, digitalData.event, ...).
@@ -16,11 +16,19 @@
 //
 // Both are kept in sync from one place — dataLayerService — so the rest
 // of the app doesn't need to know these exist; wiring lives in
-// alloyService.sendEvent(), AuthContext, and PageViewTracker.
+// eventCaptureService.captureEvent(), AuthContext, and PageViewTracker.
+//
+// Everything here is written to window only — there is no network call
+// anywhere in this file. "Sending" an event in this demo means writing it
+// into digitalData / adobeDataLayer / localStorage; nothing leaves the
+// browser.
+
+import { buildIdentityMap } from '../utils/ecid';
 
 function ensureDigitalData() {
   if (!window.digitalData) {
     window.digitalData = {
+      identityMap: buildIdentityMap(null),
       page: {
         pageInfo: {
           pageName: '',
@@ -130,6 +138,7 @@ export function setPageInfo({ pageName, path, category }) {
 export function setUserProfile(user) {
   if (!user) return;
   const dd = ensureDigitalData();
+  dd.identityMap = buildIdentityMap(user);
   dd.user = [
     {
       profile: [
@@ -149,6 +158,7 @@ export function setUserProfile(user) {
 
 export function clearUserProfile() {
   const dd = ensureDigitalData();
+  dd.identityMap = buildIdentityMap(null);
   dd.user = [
     {
       profile: [
@@ -160,6 +170,10 @@ export function clearUserProfile() {
       ],
     },
   ];
+}
+
+export function getIdentityMap() {
+  return ensureDigitalData().identityMap;
 }
 
 export function setLoanApplicationInfo({ applicationId, category, status, loanAmount }) {

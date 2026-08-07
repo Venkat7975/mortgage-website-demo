@@ -6,9 +6,10 @@ import {
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import { useAuth } from '../context/AuthContext';
 import { KEYS, readJson } from '../services/localStorage';
-import { simulateDecision, detectAbandonedApplications, APPLICATION_STATUS } from '../services/applicationService';
-import { getEventLog, getSessionEventLog } from '../services/alloyService';
-import { getDigitalData, getAdobeDataLayer } from '../services/dataLayerService';
+import { simulateDecision, APPLICATION_STATUS } from '../services/applicationService';
+import { getEventLog, getSessionEventLog } from '../services/eventCaptureService';
+import { getDigitalData, getAdobeDataLayer, getIdentityMap } from '../services/dataLayerService';
+import { getOrCreateEcid } from '../utils/ecid';
 import StatusChip from '../components/StatusChip';
 
 const DARK = '#12283B';
@@ -37,7 +38,6 @@ export default function Admin() {
   const refresh = () => setTick((t) => t + 1);
 
   useEffect(() => {
-    detectAbandonedApplications();
     refresh();
   }, []);
 
@@ -49,9 +49,11 @@ export default function Admin() {
   const sessionEvents = [...getSessionEventLog()].reverse();
   const digitalData = getDigitalData();
   const adobeDataLayer = [...getAdobeDataLayer()].reverse();
+  const identityMap = getIdentityMap();
+  const ecid = getOrCreateEcid();
 
   const renderDetail = (e) => Object.entries(e)
-    .filter(([k]) => !['eventType', 'xdmEventType', 'timestamp', 'customerId'].includes(k))
+    .filter(([k]) => !['eventType', 'xdmEventType', 'timestamp', 'customerId', 'identityMap'].includes(k))
     .map(([k, v]) => `${k}=${typeof v === 'object' && v !== null ? JSON.stringify(v) : v}`)
     .join('  ');
 
@@ -93,6 +95,30 @@ export default function Admin() {
         </Typography>
 
         <Grid container spacing={3}>
+          <Grid size={12}>
+            <Panel title="Identity — ECID &amp; identityMap">
+              <Stack direction="row" spacing={4} sx={{ mb: 2, flexWrap: 'wrap' }}>
+                <Box>
+                  <Typography sx={{ color: MUTED, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    ECID (this browser)
+                  </Typography>
+                  <Typography className="mono" sx={{ color: BRASS, fontWeight: 700, fontSize: '0.95rem', wordBreak: 'break-all' }}>
+                    {ecid}
+                  </Typography>
+                </Box>
+              </Stack>
+              <Box
+                component="pre"
+                sx={{
+                  m: 0, maxHeight: 220, overflow: 'auto', fontSize: '0.72rem', lineHeight: 1.6,
+                  color: '#DCE7F0', fontFamily: '"IBM Plex Mono", monospace',
+                }}
+              >
+                {JSON.stringify(identityMap, null, 2)}
+              </Box>
+            </Panel>
+          </Grid>
+
           <Grid size={{ xs: 12, md: 4 }}>
             <Panel title={`Customers (${users.length})`}>
               <Stack spacing={1.5} divider={<Divider sx={{ borderColor: DARK_HAIRLINE }} />}>

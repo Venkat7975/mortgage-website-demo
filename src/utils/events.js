@@ -1,20 +1,22 @@
 // Canonical event types fired across the site, and their mapping to the
 // Adobe Experience Platform / AJO event vocabulary described in the
 // project spec. These are the values used both for the internal
-// `customerEvents` local storage log and for the simulated Alloy Web SDK
-// payloads in services/alloyService.js.
+// `customerEvents` local storage log and for the simulated Web SDK
+// payloads in services/eventCaptureService.js.
 
 export const EVENT_TYPES = {
   PAGE_VIEW: 'pageView',
   LOGIN: 'login',
+  LOGIN_FAILED: 'loginFailed',
   LOGOUT: 'logout',
   REGISTRATION: 'registration',
+  REGISTRATION_FAILED: 'registrationFailed',
+  FORM_VALIDATION_ERROR: 'formValidationError',
   CATEGORY_VIEWED: 'categoryViewed',
   ELIGIBILITY_CHECK: 'eligibilityCheck',
   APPLICATION_OPENED: 'applicationOpened',
   APPLICATION_SUBMITTED: 'applicationSubmitted',
-  APPLICATION_ABANDONED: 'applicationAbandoned',
-  APPLICATION_FORM_ABANDONED: 'applicationFormAbandoned',
+  APPLICATION_DRAFT_SAVED: 'applicationDraftSaved',
   PROFILE_UPDATED: 'profileUpdated',
   CONSENT_UPDATED: 'consentUpdated',
   DOCUMENT_UPLOADED: 'documentUploaded',
@@ -23,15 +25,17 @@ export const EVENT_TYPES = {
 
 export const AEP_EVENT_MAP = {
   [EVENT_TYPES.REGISTRATION]: 'user.registration',
+  [EVENT_TYPES.REGISTRATION_FAILED]: 'user.registrationFailed',
   [EVENT_TYPES.LOGIN]: 'user.login',
+  [EVENT_TYPES.LOGIN_FAILED]: 'user.loginFailed',
   [EVENT_TYPES.LOGOUT]: 'user.logout',
+  [EVENT_TYPES.FORM_VALIDATION_ERROR]: 'form.validationError',
   [EVENT_TYPES.PAGE_VIEW]: 'web.webpagedetails.pageViews',
   [EVENT_TYPES.CATEGORY_VIEWED]: 'mortgage.categoryView',
   [EVENT_TYPES.ELIGIBILITY_CHECK]: 'mortgage.eligibilityCheck',
   [EVENT_TYPES.APPLICATION_OPENED]: 'mortgage.applicationStarted',
   [EVENT_TYPES.APPLICATION_SUBMITTED]: 'mortgage.applicationSubmitted',
-  [EVENT_TYPES.APPLICATION_ABANDONED]: 'mortgage.applicationAbandoned',
-  [EVENT_TYPES.APPLICATION_FORM_ABANDONED]: 'mortgage.applicationFormAbandoned',
+  [EVENT_TYPES.APPLICATION_DRAFT_SAVED]: 'mortgage.applicationDraftSaved',
   [EVENT_TYPES.PROFILE_UPDATED]: 'user.profileUpdated',
   [EVENT_TYPES.CONSENT_UPDATED]: 'user.consentUpdated',
   [EVENT_TYPES.DOCUMENT_UPLOADED]: 'mortgage.documentUploaded',

@@ -11,10 +11,10 @@ import LoanApplicationForm from '../components/LoanApplicationForm';
 import EventTimeline from '../components/EventTimeline';
 import { useAuth } from '../context/AuthContext';
 import {
-  getApplicationsForCustomer, cancelApplication, detectAbandonedApplications,
+  getApplicationsForCustomer, cancelApplication,
   addDocument, APPLICATION_STATUS,
 } from '../services/applicationService';
-import { getEventsForCustomer } from '../services/alloyService';
+import { getEventsForCustomer } from '../services/eventCaptureService';
 import { COLORS } from '../theme';
 
 export default function Applications() {
@@ -25,7 +25,6 @@ export default function Applications() {
 
   const refresh = () => {
     if (!user) return;
-    detectAbandonedApplications();
     setApps(getApplicationsForCustomer(user.customerId));
   };
 
