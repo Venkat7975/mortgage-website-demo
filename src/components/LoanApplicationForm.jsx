@@ -63,10 +63,17 @@ export default function LoanApplicationForm({ open, onClose, category, existingA
     stateRef.current = { application, form, submitted };
   }, [application, form, submitted]);
 
-  // Fires the moment the dialog opens — this is the "Apply Loan" click
-  // moment, independent of whether the form ever gets finished. When
-  // resuming a draft from My Applications, reuse the existing application
-  // record instead of opening a new one.
+  // Whether we've already fired the neutral "form viewed" event for this
+  // time the dialog is open, so it only fires once per open.
+  const viewedFiredRef = useRef(false);
+
+  // Opening the dialog does NOT create an application record or commit a
+  // category — it only shows the form. When resuming a draft from My
+  // Applications, the record already exists, so that path is unchanged.
+  // For a brand-new application, nothing is stored until the person
+  // actually interacts with the form (see ensureApplication below); if
+  // they open and close without touching anything, all that's captured
+  // is one neutral "form viewed" event with no category/application ID.
   useEffect(() => {
     if (!open || !user || application) return;
 
@@ -87,8 +94,6 @@ export default function LoanApplicationForm({ open, onClose, category, existingA
       return;
     }
 
-    const record = openApplication({ customerId: user.customerId, category: category || 'Home' });
-    setApplication(record);
     setForm((f) => ({
       ...f,
       category: category || 'Home',
@@ -96,12 +101,18 @@ export default function LoanApplicationForm({ open, onClose, category, existingA
       email: user.email,
       mobile: user.mobile,
     }));
+
+    if (!viewedFiredRef.current) {
+      viewedFiredRef.current = true;
+      captureEvent(EVENT_TYPES.APPLICATION_FORM_VIEWED, { customerId: user.customerId });
+    }
   }, [open, user, category, application, existingApplication]);
 
   // Catches the person closing the browser tab/window mid-form (not just
-  // clicking our own Close button). localStorage/sessionStorage writes are
-  // synchronous, so this reliably captures whatever was typed so far —
-  // saved silently as a draft, no separate "abandoned" event/status.
+  // clicking our own Close button). Only relevant once an application
+  // record actually exists (i.e. they interacted with the form) —
+  // localStorage/sessionStorage writes are synchronous, so this reliably
+  // captures whatever was typed so far as a draft.
   useEffect(() => {
     if (!open) return undefined;
 
@@ -117,36 +128,55 @@ export default function LoanApplicationForm({ open, onClose, category, existingA
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [open]);
 
+  /**
+   * Creates the actual application record — and with it, commits whatever
+   * category is currently chosen — the first time the person does
+   * anything in the form. Safe to call repeatedly; only creates a record
+   * once. `categoryOverride` is used when the category dropdown itself is
+   * the very first interaction, so the record is created with the value
+   * they just picked rather than a stale one from state.
+   */
+  const ensureApplication = (categoryOverride) => {
+    if (application) return application;
+    if (existingApplication) return existingApplication;
+    const chosenCategory = categoryOverride || form.category || category || 'Home';
+    const record = openApplication({ customerId: user.customerId, category: chosenCategory });
+    setApplication(record);
+    return record;
+  };
+
   const update = (field) => (e) => {
-    setForm((f) => ({ ...f, [field]: e.target.value }));
+    const value = e.target.value;
+    setForm((f) => ({ ...f, [field]: value }));
     setErrors((err) => ({ ...err, [field]: undefined }));
+    ensureApplication(field === 'category' ? value : undefined);
   };
 
   const handleSubmit = () => {
-    if (!application) return;
+    const app = ensureApplication();
 
     const validationErrors = validateApplicationForm(form);
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       captureEvent(EVENT_TYPES.FORM_VALIDATION_ERROR, {
-        customerId: application.customerId,
-        applicationId: application.applicationId,
-        category: application.category,
+        customerId: app.customerId,
+        applicationId: app.applicationId,
+        category: form.category,
         form: 'loanApplication',
         invalidFields: Object.keys(validationErrors),
       });
       return;
     }
 
-    submitApplication(application.applicationId, numericFields(form));
+    submitApplication(app.applicationId, numericFields(form));
     setSubmitted(true);
   };
 
   const handleClose = () => {
-    // If they're closing without having submitted, persist whatever was
-    // typed as a draft (so "Continue" from My Applications actually
-    // resumes with their data) and record it as one consolidated draft
-    // event with exactly the fields they filled in.
+    // If an application record exists (meaning they interacted with the
+    // form) and they're closing without submitting, persist whatever was
+    // typed as a draft — so "Continue" from My Applications resumes with
+    // their data — and capture it as one consolidated draft event.
     if (application && !submitted) {
       const partial = filledFields(form);
       if (Object.keys(partial).length > 0) {
@@ -164,6 +194,7 @@ export default function LoanApplicationForm({ open, onClose, category, existingA
     setSubmitted(false);
     setErrors({});
     setForm(blankForm(category));
+    viewedFiredRef.current = false;
     onClose();
   };
 
@@ -172,6 +203,7 @@ export default function LoanApplicationForm({ open, onClose, category, existingA
     setSubmitted(false);
     setErrors({});
     setForm(blankForm(category));
+    viewedFiredRef.current = false;
     onClose();
     navigate('/applications');
   };
