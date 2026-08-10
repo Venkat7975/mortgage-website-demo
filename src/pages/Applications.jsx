@@ -55,7 +55,7 @@ export default function Applications() {
     <Container maxWidth="lg" sx={{ py: { xs: 5, md: 7 } }}>
       <Typography variant="h3" sx={{ fontSize: '1.8rem', mb: 0.5 }}>My Applications</Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>
-        Every application you've started, including drafts you haven't finished.
+        Every application you've started, including ones you haven't finished (shown as Abandoned).
       </Typography>
 
       {apps.length === 0 ? (

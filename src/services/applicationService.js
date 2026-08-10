@@ -4,7 +4,7 @@ import { captureEvent } from './eventCaptureService';
 import { EVENT_TYPES } from '../utils/events';
 
 export const APPLICATION_STATUS = {
-  DRAFT: 'Draft',
+  DRAFT: 'Abandoned',
   SUBMITTED: 'Submitted',
   IN_REVIEW: 'In Review',
   APPROVED: 'Approved',
@@ -22,8 +22,10 @@ function saveAll(apps) {
 
 /**
  * Fired the moment a user clicks "Apply Loan" — creates the application
- * record immediately in Draft status, before any form fields are filled
- * in, so there's a real record even if they never finish.
+ * record immediately in Abandoned status (i.e. started but not yet
+ * submitted), before any form fields are filled in, so there's a real
+ * record even if they never finish. Status flips to Submitted once they
+ * actually submit.
  */
 export function openApplication({ customerId, category }) {
   const applicationId = generateApplicationId();

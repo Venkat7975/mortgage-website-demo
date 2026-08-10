@@ -1,7 +1,7 @@
 import { Chip } from '@mui/material';
 
 const STATUS_COLORS = {
-  Draft: { bg: '#EFEFEF', fg: '#5A5A5A' },
+  Abandoned: { bg: '#FCEEE3', fg: '#B4432D' },
   Submitted: { bg: '#E7EEF5', fg: '#3E5C76' },
   'In Review': { bg: '#FCF1DE', fg: '#8F6A22' },
   Approved: { bg: '#E5F1EA', fg: '#2F6F4E' },
@@ -10,7 +10,7 @@ const STATUS_COLORS = {
 };
 
 export default function StatusChip({ status }) {
-  const colors = STATUS_COLORS[status] || STATUS_COLORS.Draft;
+  const colors = STATUS_COLORS[status] || STATUS_COLORS.Abandoned;
   return (
     <Chip
       label={status}
