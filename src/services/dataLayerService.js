@@ -118,6 +118,15 @@ export function pushToAdobeDataLayer(record) {
   const layer = ensureAdobeDataLayer();
   layer.push(record);
   if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+    const evt = new CustomEvent('adobeDataLayer:push', { detail: record, bubbles: true });
+    // Dispatched on document (not just window): Adobe Tags' Core "Custom
+    // Event" component listens via delegation attached to document, and
+    // window sits above document in the DOM hierarchy — an event fired
+    // only on window never reaches a document-level listener. Also fired
+    // on window itself for any other code that might listen there directly.
+    if (typeof document !== 'undefined' && typeof document.dispatchEvent === 'function') {
+      document.dispatchEvent(evt);
+    }
     window.dispatchEvent(new CustomEvent('adobeDataLayer:push', { detail: record }));
   }
   return record;
