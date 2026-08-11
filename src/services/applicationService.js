@@ -43,7 +43,9 @@ export function openApplication({ customerId, category }) {
   apps.push(record);
   saveAll(apps);
 
-  captureEvent(EVENT_TYPES.APPLICATION_OPENED, { customerId, applicationId, category });
+  captureEvent(EVENT_TYPES.APPLICATION_OPENED, {
+    customerId, applicationId, category, status: APPLICATION_STATUS.DRAFT,
+  });
 
   return record;
 }
