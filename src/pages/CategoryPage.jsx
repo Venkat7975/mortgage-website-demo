@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box, Container, Typography, Button, Grid, Stack, Paper, List, ListItem, ListItemIcon, ListItemText,
@@ -7,8 +7,6 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutlined';
 import EligibilityForm from '../components/EligibilityForm';
 import LoanApplicationForm from '../components/LoanApplicationForm';
 import { useAuth } from '../context/AuthContext';
-import { captureEvent } from '../services/eventCaptureService';
-import { EVENT_TYPES } from '../utils/events';
 import { COLORS } from '../theme';
 
 export default function CategoryPage({ category }) {
@@ -16,14 +14,6 @@ export default function CategoryPage({ category }) {
   const navigate = useNavigate();
   const [eligibilityOpen, setEligibilityOpen] = useState(false);
   const [applyOpen, setApplyOpen] = useState(false);
-
-  useEffect(() => {
-    captureEvent(EVENT_TYPES.CATEGORY_VIEWED, {
-      customerId: user?.customerId || 'anonymous',
-      category: category.key,
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [category.key]);
 
   const requireAuth = (action) => {
     if (!user) {

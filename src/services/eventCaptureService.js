@@ -78,7 +78,6 @@ export function captureEvent(eventType, detail = {}) {
     case EVENT_TYPES.LOGOUT:
       clearUserProfile();
       break;
-    case EVENT_TYPES.CATEGORY_VIEWED:
     case EVENT_TYPES.APPLICATION_OPENED:
     case EVENT_TYPES.APPLICATION_SUBMITTED:
     case EVENT_TYPES.APPLICATION_STATUS_CHANGED:
