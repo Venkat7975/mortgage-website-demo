@@ -2,7 +2,7 @@
 // through one place. All keys are namespaced so this demo doesn't clash
 // with anything else running on the same origin.
 
-const PREFIX = 'meridian_';
+const PREFIX = 'ventura_';
 
 export const KEYS = {
   REGISTERED_USERS: `${PREFIX}registeredUsers`,

@@ -1,6 +1,6 @@
 import { createTheme } from '@mui/material/styles';
 
-// Meridian Home Finance — brand tokens
+// Ventura Home Finance — brand tokens
 // Cool paper background + deep ink navy + a single warm brass accent,
 // deliberately away from the cream/terracotta and dark/neon defaults.
 // Data (IDs, rates, amounts) is set in IBM Plex Mono throughout so numbers

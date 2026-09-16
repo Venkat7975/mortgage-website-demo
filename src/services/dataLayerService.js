@@ -34,7 +34,7 @@ function ensureDigitalData() {
           pageName: '',
           pageURL: typeof window !== 'undefined' ? window.location.href : '',
           server: typeof window !== 'undefined' ? window.location.hostname : '',
-          siteSection: 'Meridian Home Finance',
+          siteSection: 'Ventura Home Finance',
         },
         category: {
           primaryCategory: '',

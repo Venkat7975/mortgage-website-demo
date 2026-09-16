@@ -1,4 +1,4 @@
-# Meridian Home Finance — Mortgage/Loan Demo Site
+# Ventura Home Finance — Mortgage/Loan Demo Site
 
 A fully client-side demo banking site built to generate realistic customer,
 profile, and loan-application data for testing **Adobe Experience Platform
@@ -11,7 +11,7 @@ there is no backend and nothing is ever sent over the network.
 
 - React 19 + Vite
 - React Router v7
-- MUI (Material UI) v9, with a custom "Meridian" theme (see `src/theme.js`)
+- MUI (Material UI) v9, with a custom "Ventura" theme (see `src/theme.js`)
 - Plain Context API for auth/session state (`src/context/AuthContext.jsx`)
 
 ## Getting started
@@ -69,9 +69,9 @@ All user actions funnel through one function,
 "Capturing" an event means writing it to three places, all local to the
 browser — nothing here makes a network call:
 
-1. **localStorage** `meridian_customerEvents` — a permanent, cross-session
+1. **localStorage** `ventura_customerEvents` — a permanent, cross-session
    log (the Admin panel's "all time" view).
-2. **sessionStorage** `meridian_sessionEvents` — cleared automatically the
+2. **sessionStorage** `ventura_sessionEvents` — cleared automatically the
    moment the tab/browser closes (the Admin panel's "This Browser
    Session" view).
 3. **`window.digitalData`** and **`window.adobeDataLayer`** — see below.
@@ -80,6 +80,7 @@ This includes *failed* actions, not just successes: a wrong password
 (`loginFailed`), a duplicate-email registration attempt
 (`registrationFailed`), and any form submitted with invalid data
 (`formValidationError`, with the list of invalid fields) are all captured
+
 the same way as successful actions.
 
 ## Adobe Client Data Layer

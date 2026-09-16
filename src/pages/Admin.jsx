@@ -65,10 +65,10 @@ export default function Admin() {
   const handleResetDemo = () => {
     if (!window.confirm('Clear ALL local demo data (users, applications, events)? This cannot be undone.')) return;
     Object.keys(localStorage)
-      .filter((k) => k.startsWith('meridian_'))
+      .filter((k) => k.startsWith('ventura_'))
       .forEach((k) => localStorage.removeItem(k));
     Object.keys(sessionStorage)
-      .filter((k) => k.startsWith('meridian_'))
+      .filter((k) => k.startsWith('ventura_'))
       .forEach((k) => sessionStorage.removeItem(k));
     window.location.href = '/';
   };
@@ -81,7 +81,7 @@ export default function Admin() {
       <Container maxWidth="lg" sx={{ py: 5 }}>
         <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.5 }}>
           <Typography className="mono" sx={{ color: BRASS, fontSize: '1.4rem', fontWeight: 600 }}>
-            $ meridian --admin
+            $ ventura --admin
           </Typography>
           <Button
             size="small" startIcon={<RestartAltIcon />} onClick={handleResetDemo}

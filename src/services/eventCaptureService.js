@@ -12,10 +12,10 @@ import {
 // through. Nothing in this file makes a network call — "capturing" an
 // event means writing it into three places, all local to this browser:
 //
-//   1. localStorage `meridian_customerEvents` — a permanent, cross-session
+//   1. localStorage `ventura_customerEvents` — a permanent, cross-session
 //      log. Read by the Admin panel's "Web SDK Event Log" and by the
 //      Event Timelines on Profile/Applications.
-//   2. sessionStorage `meridian_sessionEvents` — a "this visit only" log
+//   2. sessionStorage `ventura_sessionEvents` — a "this visit only" log
 //      that the browser wipes automatically the moment the tab/browser
 //      closes.
 //   3. window.digitalData / window.adobeDataLayer — the two Adobe data
