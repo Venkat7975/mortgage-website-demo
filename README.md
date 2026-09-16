@@ -80,7 +80,6 @@ This includes *failed* actions, not just successes: a wrong password
 (`loginFailed`), a duplicate-email registration attempt
 (`registrationFailed`), and any form submitted with invalid data
 (`formValidationError`, with the list of invalid fields) are all captured
-
 the same way as successful actions.
 
 ## Adobe Client Data Layer
