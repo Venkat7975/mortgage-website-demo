@@ -20,7 +20,7 @@ export default function Home() {
                 variant="caption"
                 sx={{ color: COLORS.brassDark, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}
               >
-                Meridian Home Finance
+                Ventura Home Finance
               </Typography>
               <Typography variant="h1" sx={{ fontSize: { xs: '2.4rem', md: '3.4rem' }, mt: 1, mb: 2, lineHeight: 1.08 }}>
                 Lending, laid out like a ledger — nothing hidden in the fine print.
