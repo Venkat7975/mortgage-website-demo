@@ -62,7 +62,7 @@ export default function Navbar() {
             letterSpacing: '-0.01em',
           }}
         >
-          Meridian
+          Ventura
         </Typography>
 
         {!isNarrow && (
@@ -130,7 +130,7 @@ export default function Navbar() {
       <Drawer anchor="left" open={drawerOpen} onClose={() => setDrawerOpen(false)}>
         <Box sx={{ width: 260, pt: 2 }} role="presentation" onClick={() => setDrawerOpen(false)}>
           <Typography sx={{ fontFamily: '"Fraunces", serif', fontWeight: 600, px: 2, pb: 1 }} variant="h6">
-            Meridian
+            Ventura
           </Typography>
           <List>
             <ListItemButton onClick={() => { setDrawerOpen(false); handleApplyClick(); }}>
